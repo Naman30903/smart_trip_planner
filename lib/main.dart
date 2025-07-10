@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gemini/flutter_gemini.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smart_trip_planner/screens/login_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -7,7 +7,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
 
-  runApp(const MyApp());
+  runApp(ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {

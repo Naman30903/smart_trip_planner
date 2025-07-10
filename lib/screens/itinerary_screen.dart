@@ -1,11 +1,31 @@
 import 'package:flutter/material.dart';
 import '../models/api_response.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'chat_screen.dart';
 
-class ItineraryScreen extends StatelessWidget {
+class ItineraryScreen extends StatefulWidget {
   final TripItinerary itinerary;
 
   const ItineraryScreen({Key? key, required this.itinerary}) : super(key: key);
+
+  @override
+  State<ItineraryScreen> createState() => _ItineraryScreenState();
+}
+
+class _ItineraryScreenState extends State<ItineraryScreen> {
+  late TripItinerary _itinerary;
+
+  @override
+  void initState() {
+    super.initState();
+    _itinerary = widget.itinerary;
+  }
+
+  void _updateItinerary(TripItinerary updatedItinerary) {
+    setState(() {
+      _itinerary = updatedItinerary;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,9 +78,9 @@ class ItineraryScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          for (var day in itinerary.days) _buildDayCard(context, day),
+          for (var day in _itinerary.days) _buildDayCard(context, day),
           const SizedBox(height: 24),
-          _buildActionButtons(),
+          _buildActionButtons(context),
           const SizedBox(height: 24),
         ],
       ),
@@ -135,7 +155,7 @@ class ItineraryScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButtons() {
+  Widget _buildActionButtons(BuildContext context) {
     return Column(
       children: [
         SizedBox(
@@ -152,7 +172,15 @@ class ItineraryScreen extends StatelessWidget {
               ),
             ),
             onPressed: () {
-              // Implement follow-up functionality
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ChatScreen(
+                    itinerary: _itinerary,
+                    onItineraryUpdated: _updateItinerary,
+                  ),
+                ),
+              );
             },
           ),
         ),

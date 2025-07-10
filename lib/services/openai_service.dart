@@ -1,11 +1,14 @@
 import 'dart:convert';
 import 'package:flutter_gemini/flutter_gemini.dart';
-import 'package:flutter/foundation.dart'; // Add this import for debugPrint
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/api_response.dart';
+import '../models/message.dart';
 
 class GeminiService {
   late final Gemini _gemini;
+  // Store chat history
+  final List<Content> _chatHistory = [];
 
   GeminiService() {
     final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
@@ -68,5 +71,74 @@ class GeminiService {
     }
     // // If execution reaches here, throw to avoid returning null
     // throw Exception('Failed to generate itinerary');
+  }
+
+  Future<String> refineItinerary(
+    String followUpQuestion,
+    TripItinerary currentItinerary,
+  ) async {
+    try {
+      // Convert the current itinerary to a JSON string
+      final currentItineraryJson = jsonEncode({
+        "title": currentItinerary.title,
+        "startDate": currentItinerary.startDate,
+        "endDate": currentItinerary.endDate,
+        "days": currentItinerary.days
+            .map(
+              (day) => {
+                "date": day.date,
+                "summary": day.summary,
+                "items": day.items
+                    .map(
+                      (item) => {
+                        "time": item.time,
+                        "activity": item.activity,
+                        "location": item.location,
+                      },
+                    )
+                    .toList(),
+              },
+            )
+            .toList(),
+      });
+
+      // Create a prompt that includes the current itinerary and the follow-up question
+      final prompt =
+          """I have the following travel itinerary:
+      $currentItineraryJson
+      
+      User request: "$followUpQuestion"
+      
+      Please update the itinerary to incorporate this request. Return the complete, revised itinerary as valid JSON following the same schema, with all the original details plus the requested changes. Make sure the response is a valid JSON that I can parse.""";
+
+      // Initialize chat if it's empty
+      if (_chatHistory.isEmpty) {
+        _chatHistory.add(Content(role: 'user', parts: [Part.text(prompt)]));
+      } else {
+        // Add the new message to chat history
+        _chatHistory.add(
+          Content(role: 'user', parts: [Part.text(followUpQuestion)]),
+        );
+      }
+
+      // Get the response using chat history
+      debugPrint('Sending follow-up to Gemini: $followUpQuestion');
+      final result = await _gemini.chat(_chatHistory);
+      final response = result?.output;
+
+      debugPrint('Gemini chat response: $response');
+
+      // if (response == null || response.isEmpty) {
+      //   throw Exception('Empty response from Gemini API');
+      // }
+
+      // Add the AI response to chat history
+      _chatHistory.add(Content(role: 'model', parts: [Part.text(response!)]));
+
+      return response;
+    } catch (e) {
+      debugPrint('Error refining itinerary: $e');
+      throw Exception('Error refining itinerary: $e');
+    }
   }
 }

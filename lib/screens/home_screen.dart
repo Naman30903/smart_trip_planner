@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
-import '../services/openai_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/chat_provider.dart';
 import '../models/api_response.dart';
 import 'itinerary_screen.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   final savedItineraries = [
     "Japan Trip, 20 days vacation,explore ky...",
     "India Trip, 7 days work trip, suggest affor...",
@@ -23,9 +24,6 @@ class _HomeScreenState extends State<HomeScreen> {
   late stt.SpeechToText _speech;
   bool _isListening = false;
   bool _isLoading = false;
-
-  // Initialize Gemini service with your API key
-  final GeminiService _geminiService = GeminiService();
 
   @override
   void initState() {
@@ -78,11 +76,9 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      final itinerary = await _geminiService.generateItinerary(
-        _tripController.text,
+      final itinerary = await ref.read(
+        itineraryProvider(_tripController.text).future,
       );
-
-      // Navigate to the itinerary screen
       if (mounted) {
         Navigator.push(
           context,
