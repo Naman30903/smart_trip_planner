@@ -25,9 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = false;
 
   // Initialize Gemini service with your API key
-  final GeminiService _geminiService = GeminiService(
-    apiKey: "AIzaSyBcVFjO8TEtV6b_vCN1RLoIUz7bDV-y440",
-  );
+  final GeminiService _geminiService = GeminiService();
 
   @override
   void initState() {

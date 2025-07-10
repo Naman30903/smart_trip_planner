@@ -1,13 +1,17 @@
 import 'dart:convert';
 import 'package:flutter_gemini/flutter_gemini.dart';
 import 'package:flutter/foundation.dart'; // Add this import for debugPrint
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/api_response.dart';
 
 class GeminiService {
-  final String apiKey;
   late final Gemini _gemini;
 
-  GeminiService({required this.apiKey}) {
+  GeminiService() {
+    final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
+    if (apiKey.isEmpty) {
+      throw Exception('GEMINI_API_KEY not found in .env');
+    }
     // Initialize the Gemini instance
     Gemini.init(apiKey: apiKey);
     _gemini = Gemini.instance;

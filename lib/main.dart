@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_gemini/flutter_gemini.dart';
 import 'package:smart_trip_planner/screens/login_screen.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-void main() {
-  // Initialize Gemini with your API key
-  Gemini.init(apiKey: 'AIzaSyBcVFjO8TEtV6b_vCN1RLoIUz7bDV-y440');
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
 
   runApp(const MyApp());
 }
