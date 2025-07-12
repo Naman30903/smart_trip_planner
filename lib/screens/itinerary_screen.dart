@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/api_response.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'chat_screen.dart';
+import '../providers/database_provider.dart';
 
-class ItineraryScreen extends StatefulWidget {
+class ItineraryScreen extends ConsumerStatefulWidget {
   final TripItinerary itinerary;
 
-  const ItineraryScreen({Key? key, required this.itinerary}) : super(key: key);
+  const ItineraryScreen({super.key, required this.itinerary});
 
   @override
-  State<ItineraryScreen> createState() => _ItineraryScreenState();
+  ConsumerState<ItineraryScreen> createState() => _ItineraryScreenState();
 }
 
-class _ItineraryScreenState extends State<ItineraryScreen> {
+class _ItineraryScreenState extends ConsumerState<ItineraryScreen> {
   late TripItinerary _itinerary;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -25,6 +28,34 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
     setState(() {
       _itinerary = updatedItinerary;
     });
+  }
+
+  Future<void> _saveItineraryOffline() async {
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      final key = await ref.read(saveItineraryProvider(_itinerary).future);
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Itinerary saved successfully')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving itinerary: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
   }
 
   @override
@@ -188,8 +219,14 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            icon: const Icon(Icons.download),
-            label: const Text("Save Offline"),
+            icon: _isSaving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.download),
+            label: Text(_isSaving ? "Saving..." : "Save Offline"),
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.black,
               side: const BorderSide(color: Colors.black),
@@ -198,9 +235,7 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                 borderRadius: BorderRadius.circular(16),
               ),
             ),
-            onPressed: () {
-              // Implement save functionality
-            },
+            onPressed: _isSaving ? null : _saveItineraryOffline,
           ),
         ),
       ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:smart_trip_planner/providers/database_provider.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/chat_provider.dart';
@@ -13,13 +14,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  final savedItineraries = [
-    "Japan Trip, 20 days vacation,explore ky...",
-    "India Trip, 7 days work trip, suggest affor...",
-    "Europe trip, include Paris, Berlin, Dortmun...",
-    "Two days weekend getaway to somewhe...",
-  ];
-
   final TextEditingController _tripController = TextEditingController();
   late stt.SpeechToText _speech;
   bool _isListening = false;
@@ -111,6 +105,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch the recent itineraries provider
+    final recentItinerariesAsync = ref.watch(recentItinerariesProvider);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF9F7F6),
       body: SafeArea(
@@ -255,34 +252,77 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                ...savedItineraries.map(
-                  (itinerary) => Padding(
-                    padding: const EdgeInsets.only(bottom: 16.0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: ListTile(
-                        leading: const Icon(
-                          Icons.circle,
-                          color: Color(0xFF00C48C),
-                          size: 16,
+                // Show recent itineraries or loading state
+                recentItinerariesAsync.when(
+                  data: (itineraries) {
+                    if (itineraries.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          "No saved itineraries yet",
+                          style: TextStyle(fontSize: 16, color: Colors.grey),
                         ),
-                        title: Text(
-                          itinerary,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Colors.black,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 0,
-                        ),
-                        onTap: () {},
-                      ),
+                      );
+                    }
+
+                    return Column(
+                      children: itineraries
+                          .map(
+                            (itinerary) => Padding(
+                              padding: const EdgeInsets.only(bottom: 16.0),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: ListTile(
+                                  leading: const Icon(
+                                    Icons.circle,
+                                    color: Color(0xFF00C48C),
+                                    size: 16,
+                                  ),
+                                  title: Text(
+                                    "${itinerary.title} (${itinerary.startDate} - ${itinerary.endDate})",
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.black,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 0,
+                                  ),
+                                  onTap: () async {
+                                    // Use Hive's key to retrieve the itinerary
+                                    final key = itinerary.key.toString();
+                                    final savedItinerary = await ref.read(
+                                      itineraryByKeyProvider(key).future,
+                                    );
+
+                                    if (savedItinerary != null && mounted) {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => ItineraryScreen(
+                                            itinerary: savedItinerary,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    );
+                  },
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (_, __) => const Center(
+                    child: Text(
+                      "Error loading saved itineraries",
+                      style: TextStyle(fontSize: 16, color: Colors.red),
                     ),
                   ),
                 ),

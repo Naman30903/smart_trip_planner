@@ -50,7 +50,7 @@ class GeminiService {
       // Call the Gemini API
       final result = await _gemini.prompt(parts: [Part.text(fullPrompt)]);
       final output = result?.output;
-      debugPrint('Gemini API raw output: $output'); // <-- Debug print here
+      debugPrint('Gemini API raw output: $output'); // <-- Debug debugPrint here
       if (output == null || output.isEmpty) {
         throw Exception('Empty response from Gemini API');
       }
@@ -61,7 +61,7 @@ class GeminiService {
       final itineraryJson = jsonDecode(jsonStr);
       return TripItinerary.fromJson(itineraryJson);
     } catch (e) {
-      print('Error in Gemini API call: $e');
+      debugPrint('Error in Gemini API call: $e');
       if (e.toString().contains('503')) {
         throw Exception(
           'Gemini API is temporarily unavailable. Please try again later.',
