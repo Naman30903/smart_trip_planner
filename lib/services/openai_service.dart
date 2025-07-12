@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io' show SocketException;
 import 'package:flutter_gemini/flutter_gemini.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -50,7 +51,7 @@ class GeminiService {
       // Call the Gemini API
       final result = await _gemini.prompt(parts: [Part.text(fullPrompt)]);
       final output = result?.output;
-      debugPrint('Gemini API raw output: $output'); // <-- Debug debugPrint here
+      debugPrint('Gemini API raw output: $output');
       if (output == null || output.isEmpty) {
         throw Exception('Empty response from Gemini API');
       }
@@ -60,17 +61,21 @@ class GeminiService {
           .trim();
       final itineraryJson = jsonDecode(jsonStr);
       return TripItinerary.fromJson(itineraryJson);
-    } catch (e) {
-      debugPrint('Error in Gemini API call: $e');
-      if (e.toString().contains('503')) {
-        throw Exception(
-          'Gemini API is temporarily unavailable. Please try again later.',
-        );
+    } on FormatException catch (_) {
+      throw Exception('The response was not valid JSON. Please try again.');
+    } on GeminiException catch (e) {
+      if ((e.message as String).contains('401')) {
+        throw Exception('Unauthorized: Please check your API key.');
+      } else if ((e.message as String).contains('429')) {
+        throw Exception('Too many requests. Please wait and try again.');
+      } else {
+        throw Exception('Gemini API error: ${e.message}');
       }
-      throw Exception('Error generating itinerary: $e');
+    } on SocketException catch (_) {
+      throw Exception('Network error: Please check your internet connection.');
+    } catch (e) {
+      throw Exception('Unexpected error: $e');
     }
-    // // If execution reaches here, throw to avoid returning null
-    // throw Exception('Failed to generate itinerary');
   }
 
   Future<String> refineItinerary(

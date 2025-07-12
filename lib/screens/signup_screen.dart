@@ -202,7 +202,11 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                   child: const Text(
                     "Sign UP",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
