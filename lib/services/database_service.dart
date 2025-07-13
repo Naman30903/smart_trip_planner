@@ -99,6 +99,40 @@ class DatabaseService {
     }
   }
 
+  Future<void> saveUserName(String name) async {
+    var box = await Hive.openBox('user_profile');
+    await box.put('name', name);
+  }
+
+  // Retrieve user name from Hive
+  Future<String?> getUserName() async {
+    var box = await Hive.openBox('user_profile');
+    return box.get('name') as String?;
+  }
+
+  Future<void> saveTokenUsage({
+    required int requestTokens,
+    required int responseTokens,
+  }) async {
+    var box = await Hive.openBox('app_settings');
+    await box.put('request_tokens', requestTokens);
+    await box.put('response_tokens', responseTokens);
+    debugPrint(
+      'Saved token usage: $requestTokens request, $responseTokens response',
+    );
+  }
+
+  // Get token usage
+  Future<Map<String, int>> getTokenUsage() async {
+    var box = await Hive.openBox('app_settings');
+    final requestTokens = box.get('request_tokens', defaultValue: 0) as int;
+    final responseTokens = box.get('response_tokens', defaultValue: 0) as int;
+    debugPrint(
+      'Retrieved token usage: $requestTokens request, $responseTokens response',
+    );
+    return {'requestTokens': requestTokens, 'responseTokens': responseTokens};
+  }
+
   // Close the box when no longer needed
   Future<void> close() async {
     if (_isInitialized) {

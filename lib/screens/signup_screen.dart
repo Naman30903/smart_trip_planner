@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:smart_trip_planner/providers/database_provider.dart';
 import 'package:smart_trip_planner/services/auth_service.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
@@ -13,6 +14,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _nameController = TextEditingController();
   bool passwordVisible = false;
   bool confirmPasswordVisible = false;
   bool _isLoading = false;
@@ -20,6 +22,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -54,7 +57,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         _emailController.text.trim(),
         _passwordController.text,
       );
-      // No need to navigate, AuthWrapper will handle it
+      await ref
+          .read(databaseServiceProvider)
+          .saveUserName(_nameController.text.trim());
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
@@ -135,17 +140,49 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               Row(
                 children: [
                   Expanded(child: Divider(color: Color(0xFFE5E7EB))),
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: Text(
-                      "or Sign up with Email",
-                      style: TextStyle(color: Color(0xFFB2B6C0)),
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.of(
+                          context,
+                        ).pop(); // or push to LoginScreen if needed
+                      },
+                      child: const Text(
+                        "or Sign In with Email",
+                        style: TextStyle(color: Color(0xFFB2B6C0)),
+                      ),
                     ),
                   ),
                   Expanded(child: Divider(color: Color(0xFFE5E7EB))),
                 ],
               ),
               const SizedBox(height: 24),
+              Text(
+                "Name",
+                style: TextStyle(
+                  color: Color(0xFF0A1833),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  prefixIcon: Icon(
+                    Icons.person_outline,
+                    color: Color(0xFFB2B6C0),
+                  ),
+                  hintText: "Your Name",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 16),
               Text(
                 "Email address",
                 style: TextStyle(

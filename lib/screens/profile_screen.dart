@@ -1,17 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:smart_trip_planner/providers/database_provider.dart';
 import '../providers/profile_provider.dart';
 import '../services/auth_service.dart';
 
 class ProfileScreen extends ConsumerWidget {
-  const ProfileScreen({Key? key}) : super(key: key);
+  const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tokenUsage = ref.watch(tokenUsageProvider);
+    final tokenUsageAsync = ref.watch(tokenUsageProvider);
     final userProfileAsync = ref.watch(userProfileProvider);
 
     return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Profile',
+          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => ref.refresh(tokenUsageProvider),
+          ),
+        ],
+      ),
       backgroundColor: const Color(0xFFF9F7F6),
       body: SafeArea(
         child: Padding(
@@ -19,19 +36,6 @@ class ProfileScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Back button and title
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  const Text(
-                    'Profile',
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
               const SizedBox(height: 24),
               // User profile card
               Card(
@@ -59,12 +63,21 @@ class ProfileScreen extends ConsumerWidget {
                               ),
                             ),
                             const SizedBox(height: 16),
-                            Text(
-                              "${profile.name}",
-                              style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            FutureBuilder<String?>(
+                              future: ref
+                                  .read(databaseServiceProvider)
+                                  .getUserName(),
+                              builder: (context, snapshot) {
+                                final userName = snapshot.data ?? "User";
+                                return Text(
+                                  userName,
+                                  style: const TextStyle(
+                                    color: Color(0xFF00704A),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 28,
+                                  ),
+                                );
+                              },
                             ),
                             Text(
                               profile.email,
@@ -82,43 +95,51 @@ class ProfileScreen extends ConsumerWidget {
                       const Divider(height: 32),
 
                       // Request tokens
-                      _buildTokenRow(
-                        'Request Tokens',
-                        tokenUsage.requestTokens,
-                        tokenUsage.maxTokens,
-                        const Color(0xFF00704A),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Response tokens
-                      _buildTokenRow(
-                        'Response Tokens',
-                        tokenUsage.responseTokens,
-                        tokenUsage.maxTokens,
-                        Colors.redAccent,
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Cost
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Total Cost',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            "\$${tokenUsage.totalCost.toStringAsFixed(2)} USD",
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF00704A),
-                            ),
-                          ),
-                        ],
+                      tokenUsageAsync.when(
+                        data: (tokenUsage) {
+                          return Column(
+                            children: [
+                              _buildTokenRow(
+                                'Request Tokens',
+                                tokenUsage.requestTokens,
+                                tokenUsage.maxTokens,
+                                const Color(0xFF00704A),
+                              ),
+                              const SizedBox(height: 24),
+                              _buildTokenRow(
+                                'Response Tokens',
+                                tokenUsage.responseTokens,
+                                tokenUsage.maxTokens,
+                                Colors.redAccent,
+                              ),
+                              const SizedBox(height: 24),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text(
+                                    'Total Cost',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    "\$${tokenUsage.totalCost.toStringAsFixed(6)} USD",
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF00704A),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          );
+                        },
+                        loading: () => const CircularProgressIndicator(),
+                        error: (error, stack) =>
+                            Text('Error loading token usage: $error'),
                       ),
                     ],
                   ),

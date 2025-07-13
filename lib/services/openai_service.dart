@@ -3,6 +3,9 @@ import 'dart:io' show SocketException;
 import 'package:flutter_gemini/flutter_gemini.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:smart_trip_planner/providers/database_provider.dart';
+import 'package:smart_trip_planner/providers/profile_provider.dart';
 import '../models/api_response.dart';
 import '../models/message.dart';
 
@@ -11,7 +14,8 @@ class GeminiService {
   final List<Content> _chatHistory = [];
   int _requestTokens = 0;
   int _responseTokens = 0;
-  final int _maxTokens = 1000;
+  final int _maxTokens = 100000;
+  final ProviderRef? _ref;
 
   int get requestTokens => _requestTokens;
   int get responseTokens => _responseTokens;
@@ -24,7 +28,7 @@ class GeminiService {
     return inputCost + outputCost;
   }
 
-  GeminiService() {
+  GeminiService({ProviderRef? ref}) : _ref = ref {
     final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
     if (apiKey.isEmpty) {
       throw Exception('GEMINI_API_KEY not found in .env');
@@ -32,6 +36,38 @@ class GeminiService {
     // Initialize the Gemini instance
     Gemini.init(apiKey: apiKey);
     _gemini = Gemini.instance;
+    _loadTokens(); // Load saved tokens
+  }
+
+  Future<void> _loadTokens() async {
+    if (_ref != null) {
+      try {
+        final databaseService = _ref.read(databaseServiceProvider);
+        final tokenUsage = await databaseService.getTokenUsage();
+        _requestTokens = tokenUsage['requestTokens'] ?? 0;
+        _responseTokens = tokenUsage['responseTokens'] ?? 0;
+        debugPrint(
+          'Loaded token counts: $_requestTokens request, $_responseTokens response',
+        );
+      } catch (e) {
+        debugPrint('Error loading token counts: $e');
+      }
+    }
+  }
+
+  Future<void> _saveTokens() async {
+    if (_ref != null) {
+      try {
+        final databaseService = _ref!.read(databaseServiceProvider);
+        await databaseService.saveTokenUsage(
+          requestTokens: _requestTokens,
+          responseTokens: _responseTokens,
+        );
+        _ref!.invalidate(tokenUsageProvider);
+      } catch (e) {
+        debugPrint('Error saving token counts: $e');
+      }
+    }
   }
 
   Future<int> _countTokens(String text) async {
@@ -40,14 +76,12 @@ class GeminiService {
       return tokenCount ?? 0;
     } catch (e) {
       debugPrint('Error counting tokens: $e');
-      // Fallback to basic estimation if token counting fails
       return (text.length / 4).ceil();
     }
   }
 
   Future<TripItinerary> generateItinerary(String prompt) async {
     try {
-      // Create the prompt with specific JSON schema instructions
       final fullPrompt =
           """Create a detailed travel itinerary based on this description: "$prompt".
       Return ONLY valid JSON that exactly follows this schema:
@@ -74,6 +108,7 @@ class GeminiService {
 
       final requestTokenCount = await _countTokens(fullPrompt);
       _requestTokens += requestTokenCount;
+      debugPrint('Request tokens: $_requestTokens (+$requestTokenCount)');
 
       // Call the Gemini API
       final result = await _gemini.prompt(parts: [Part.text(fullPrompt)]);
@@ -85,6 +120,9 @@ class GeminiService {
 
       final responseTokenCount = await _countTokens(output);
       _responseTokens += responseTokenCount;
+      debugPrint('Response tokens: $_responseTokens (+$responseTokenCount)');
+
+      await _saveTokens();
 
       String jsonStr = output
           .replaceAll('```json', '')
@@ -174,6 +212,11 @@ class GeminiService {
         // Add the AI response to chat history
         _chatHistory.add(Content(role: 'model', parts: [Part.text(response)]));
       }
+
+      debugPrint('Request tokens: $_requestTokens');
+      debugPrint('Response tokens: $_responseTokens');
+
+      await _saveTokens();
 
       return response ?? '';
     } catch (e) {

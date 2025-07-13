@@ -4,7 +4,7 @@ import '../models/api_response.dart';
 
 // Provider for GeminiService singleton
 final geminiServiceProvider = Provider<GeminiService>((ref) {
-  return GeminiService();
+  return GeminiService(ref: ref);
 });
 
 // Async provider for generating itinerary

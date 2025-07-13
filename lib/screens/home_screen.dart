@@ -119,51 +119,60 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    RichText(
-                      text: const TextSpan(
-                        children: [
-                          TextSpan(
-                            text: "Hey Shubham ",
-                            style: TextStyle(
-                              color: Color(0xFF00704A),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 28,
-                            ),
-                          ),
-                          WidgetSpan(
-                            child: Padding(
-                              padding: EdgeInsets.only(left: 2.0),
-                              child: Text("👋", style: TextStyle(fontSize: 28)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const ProfileScreen(),
-                          ),
-                        );
-                      },
-                      child: CircleAvatar(
-                        backgroundColor: const Color(0xFF00704A),
-                        radius: 24,
-                        child: const Text(
-                          "S",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 28,
+                FutureBuilder<String?>(
+                  future: ref.read(databaseServiceProvider).getUserName(),
+                  builder: (context, snapshot) {
+                    final userName = snapshot.data ?? "User";
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        RichText(
+                          text: TextSpan(
+                            children: [
+                              TextSpan(
+                                text: "Hey $userName",
+                                style: TextStyle(
+                                  color: Color(0xFF00704A),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 28,
+                                ),
+                              ),
+                              WidgetSpan(
+                                child: Padding(
+                                  padding: EdgeInsets.only(left: 2.0),
+                                  child: Text(
+                                    "👋",
+                                    style: TextStyle(fontSize: 28),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                    ),
-                  ],
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => const ProfileScreen(),
+                              ),
+                            );
+                          },
+                          child: CircleAvatar(
+                            backgroundColor: const Color(0xFF00704A),
+                            radius: 24,
+                            child: const Text(
+                              "N",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 28,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 40),
                 const Center(

@@ -22,9 +22,8 @@ class SavedItinerary extends HiveObject {
   @HiveField(5)
   late final int? key;
 
-  // set key(int? value) {
-  //   key = value;
-  // }
+  @HiveField(6)
+  late String userName;
 
   SavedItinerary({
     required this.title,
@@ -32,6 +31,7 @@ class SavedItinerary extends HiveObject {
     required this.endDate,
     required this.savedAt,
     required this.daysJson,
+    this.userName = '',
   });
 
   // Factory method to convert from API model
@@ -98,6 +98,7 @@ class SavedItinerary extends HiveObject {
     'endDate': endDate,
     'savedAt': savedAt.toIso8601String(),
     'daysJson': daysJson,
+    'userName': userName,
   };
 
   factory SavedItinerary.fromMap(Map<String, dynamic> map) {
@@ -107,6 +108,7 @@ class SavedItinerary extends HiveObject {
       endDate: map['endDate'],
       savedAt: DateTime.parse(map['savedAt']),
       daysJson: map['daysJson'],
+      userName: map['userName'] ?? '',
     );
   }
 }
