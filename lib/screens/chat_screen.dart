@@ -57,6 +57,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final userMessage = _messageController.text.trim();
     _messageController.clear();
 
+    // Add user message to chat
     setState(() {
       _messages.add(Message(content: userMessage, sender: MessageSender.user));
       _messages.add(
@@ -66,45 +67,107 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           isLoading: true,
         ),
       );
-      _isTyping = true;
     });
 
     _scrollToBottom();
 
     try {
-      final responseAsync = ref.read(
+      debugPrint('Sending message to Gemini: $userMessage');
+
+      // Simple async/await pattern
+      final response = await ref.read(
         refineItineraryProvider(
           RefineParams(
             followUp: userMessage,
             currentItinerary: widget.itinerary,
           ),
-        ),
+        ).future,
       );
-      final responseValue = await responseAsync;
 
-      // If responseValue is AsyncValue<String>, extract the value
-      responseValue.when(
-        data: (data) => _handleGeminiResponse(data),
-        loading: () {},
-        error: (err, stack) {
-          setState(() {
-            _messages.removeLast();
-            _messages.add(
-              Message(
-                content:
-                    "Sorry, I couldn't update your itinerary. Please try again.",
-                sender: MessageSender.ai,
-              ),
-            );
-            _isTyping = false;
-          });
-        },
+      debugPrint(
+        'Response received from Gemini with length: ${response.length}',
       );
-    } catch (e) {
+
       setState(() {
-        // Remove the "Thinking..." message
-        _messages.removeLast();
-        // Add error message
+        // Remove the loading message
+        _messages.removeWhere((message) => message.isLoading);
+
+        // Add the actual response
+        _messages.add(Message(content: response, sender: MessageSender.ai));
+        _isTyping = false;
+      });
+
+      // Try to parse JSON (optional)
+      try {
+        debugPrint('Attempting to parse JSON from response');
+
+        final RegExp jsonRegex = RegExp(r'```(?:json)?([\s\S]*?)```');
+        final Match? match = jsonRegex.firstMatch(response);
+
+        String jsonStr;
+        if (match != null) {
+          // Found JSON between code blocks
+          jsonStr = match.group(1)?.trim() ?? '';
+          debugPrint('Extracted JSON from code block');
+        } else {
+          final int startIdx = response.indexOf('{');
+          final int endIdx = response.lastIndexOf('}') + 1;
+
+          if (startIdx >= 0 && endIdx > startIdx) {
+            jsonStr = response.substring(startIdx, endIdx);
+            debugPrint('Extracted JSON using brace detection');
+          } else {
+            throw FormatException('No valid JSON found in response');
+          }
+        }
+
+        debugPrint('Parsing JSON string of length: ${jsonStr.length}');
+        final updatedItinerary = TripItinerary.fromJson(jsonDecode(jsonStr));
+        setState(() {
+          if (_messages.isNotEmpty) {
+            _messages.removeLast();
+          }
+          String explanation = '';
+          if (match != null) {
+            final endOfJson = response.indexOf('```', match.end);
+            if (endOfJson > 0 && endOfJson < response.length - 3) {
+              explanation = response.substring(endOfJson + 3).trim();
+            }
+          } else {
+            final endIdx = response.lastIndexOf('}') + 1;
+            if (endIdx > 0 && endIdx < response.length) {
+              explanation = response.substring(endIdx).trim();
+            }
+          }
+
+          final String templateMessage =
+              "✅ *Itinerary Updated Successfully*\n\nYour itinerary \"${updatedItinerary.title}\" has been updated.\n${explanation.isNotEmpty ? "\n$explanation" : ""}";
+
+          _messages.add(
+            Message(content: templateMessage, sender: MessageSender.ai),
+          );
+        });
+
+        widget.onItineraryUpdated(updatedItinerary);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Itinerary successfully updated'),
+            backgroundColor: Color(0xFF00704A),
+          ),
+        );
+      } catch (e) {
+        debugPrint('Failed to parse JSON: $e');
+        // Just continue - we've already shown the response
+      }
+
+      _scrollToBottom();
+    } catch (e) {
+      debugPrint('Error sending message: $e');
+
+      // Handle error by removing loading and showing error message
+      setState(() {
+        _messages.removeWhere((message) => message.isLoading);
         _messages.add(
           Message(
             content:
@@ -114,14 +177,35 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         );
         _isTyping = false;
       });
-    }
 
-    _scrollToBottom();
+      _scrollToBottom();
+    }
   }
 
   void _handleGeminiResponse(String response) {
-    // Try to parse the response as a JSON to update the itinerary
+    debugPrint(
+      '_handleGeminiResponse: Started with response length ${response.length}',
+    );
+
+    // First ensure we remove any loading message - do this before anything else
+    setState(() {
+      // Find and remove any loading messages
+      _messages.removeWhere((message) => message.isLoading);
+      debugPrint('_handleGeminiResponse: Removed loading messages');
+    });
+
+    // Show raw response regardless of whether it's valid JSON
+    setState(() {
+      _messages.add(Message(content: response, sender: MessageSender.ai));
+      _isTyping = false;
+      debugPrint(
+        '_handleGeminiResponse: Added response message, typing set to false',
+      );
+    });
+
+    // Now try to parse as JSON for itinerary update - but don't affect the UI
     try {
+      debugPrint('_handleGeminiResponse: Attempting to parse JSON');
       // Extract JSON from response (remove any markdown formatting if present)
       String jsonStr = response
           .replaceAll('```json', '')
@@ -131,31 +215,30 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final Map<String, dynamic> updatedItineraryJson = jsonDecode(jsonStr);
       final updatedItinerary = TripItinerary.fromJson(updatedItineraryJson);
 
-      // Call the callback to update the parent's itinerary
+      // Update the parent's itinerary but don't change our message
       widget.onItineraryUpdated(updatedItinerary);
 
-      setState(() {
-        // Remove the "Thinking..." message
-        _messages.removeLast();
-        // Add the AI's response
-        _messages.add(
-          Message(
-            content: "I've updated your itinerary with your request.",
-            sender: MessageSender.ai,
-          ),
-        );
-        _isTyping = false;
-      });
+      debugPrint('_handleGeminiResponse: Successfully updated itinerary');
+
+      // Optional: Show a snackbar to indicate successful update
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Itinerary successfully updated'),
+          backgroundColor: Color(0xFF00704A),
+        ),
+      );
     } catch (e) {
-      // If not valid JSON, just display the response as text
-      setState(() {
-        // Remove the "Thinking..." message
-        _messages.removeLast();
-        // Add the AI's response
-        _messages.add(Message(content: response, sender: MessageSender.ai));
-        _isTyping = false;
-      });
+      debugPrint('_handleGeminiResponse: Failed to parse JSON: $e');
+      // JSON parsing failed, but we already showed the raw response above
     }
+
+    // Force scroll to bottom to ensure newest message is visible
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToBottom();
+      debugPrint('_handleGeminiResponse: Scrolled to bottom');
+    });
+
+    debugPrint('_handleGeminiResponse: Method completed');
   }
 
   @override
@@ -330,7 +413,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               backgroundColor: const Color(0xFF00704A),
               radius: 20,
               child: const Text(
-                "S",
+                "N",
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
