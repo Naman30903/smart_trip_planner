@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:smart_trip_planner/screens/profile_screen.dart';
 import '../models/api_response.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'chat_screen.dart';
@@ -71,14 +72,21 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen> {
         ),
         title: const Text("Home", style: TextStyle(color: Colors.black)),
         actions: [
-          CircleAvatar(
-            backgroundColor: const Color(0xFF00704A),
-            radius: 20,
-            child: const Text(
-              "S",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const ProfileScreen()),
+              );
+            },
+            child: CircleAvatar(
+              backgroundColor: const Color(0xFF00704A),
+              radius: 20,
+              child: const Text(
+                "S",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -173,10 +181,10 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen> {
                     ),
                   ),
                   const Spacer(),
-                  Text(
-                    "${_calculateTripLength(day.items)} mins",
-                    style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-                  ),
+                  // Text(
+                  //   "${_calculateTripLength(day.items)} mins",
+                  //   style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+                  // ),
                 ],
               ),
             ),
@@ -251,33 +259,36 @@ class _ItineraryScreenState extends ConsumerState<ItineraryScreen> {
     }
   }
 
-  int _calculateTripLength(List<Item> items) {
-    // This is a mock function, in a real app you would calculate trip duration
-    // based on locations and transportation methods
-    return 11 * 60 + 5; // 11 hours 5 mins
-  }
+  // int _calculateTripLength(List<Item> items) {
+  //   // This is a mock function, in a real app you would calculate trip duration
+  //   // based on locations and transportation methods
+  //   return 11 * 60 + 5; // 11 hours 5 mins
+  // }
 
   Future<void> _openMap(String location) async {
     try {
       final coordinates = location.split(',');
       if (coordinates.length == 2) {
-        final lat = double.parse(coordinates[0]);
-        final lng = double.parse(coordinates[1]);
-        final url = Uri.parse(
+        final lat = double.tryParse(coordinates[0]);
+        final lng = double.tryParse(coordinates[1]);
+        if (lat == null || lng == null) {
+          throw Exception('Invalid coordinates');
+        }
+        final webUrl = Uri.parse(
           'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
         );
-        if (await canLaunchUrl(url)) {
-          await launchUrl(url);
+        if (await canLaunchUrl(webUrl)) {
+          await launchUrl(webUrl, mode: LaunchMode.externalApplication);
         } else {
           throw Exception('Could not launch map URL');
         }
       }
     } catch (e) {
-      // Show a snackbar if plugin is missing or any error occurs
-      // You need BuildContext, so pass it as a parameter if needed
-      print('Error opening map: $e');
-      // Optionally, show a snackbar or dialog to the user
-      // ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open map.')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not open map: $e')));
+      }
     }
   }
 }

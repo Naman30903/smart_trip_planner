@@ -12,7 +12,7 @@ class DatabaseService {
   // Initialize Hive and open box
   Future<void> init() async {
     if (_isInitialized) return;
-    
+
     await Hive.initFlutter();
     _box = await Hive.openBox(_boxName);
     _isInitialized = true;
@@ -20,8 +20,7 @@ class DatabaseService {
 
   // Save an itinerary
   Future<String> saveItinerary(TripItinerary itinerary) async {
-    await init(); // Ensure initialized
-    
+    await init();
     try {
       final savedItinerary = SavedItinerary.fromApiModel(itinerary);
       final key = await _box.add(savedItinerary.toMap());
@@ -38,17 +37,24 @@ class DatabaseService {
       debugPrint('Database not initialized');
       return [];
     }
-    
+
     try {
-      final values = _box.values.toList();
-      final itineraries = values
-          .map((map) => SavedItinerary.fromMap(Map<String, dynamic>.from(map)))
-          .toList();
-      
-      // Sort by savedAt in descending order
+      final keys = _box.keys.toList();
+      final itineraries = <SavedItinerary>[];
+
+      for (var key in keys) {
+        final map = _box.get(key);
+        if (map != null) {
+          final savedItinerary = SavedItinerary.fromMap(
+            Map<String, dynamic>.from(map),
+          );
+          // Attach the Hive key to the object
+          savedItinerary.key = key as int?;
+          itineraries.add(savedItinerary);
+        }
+      }
+
       itineraries.sort((a, b) => b.savedAt.compareTo(a.savedAt));
-      
-      // Return only the requested number of items
       return itineraries.take(count).toList();
     } catch (e) {
       debugPrint('Error getting recent itineraries: $e');
@@ -62,12 +68,14 @@ class DatabaseService {
       debugPrint('Database not initialized');
       return null;
     }
-    
+
     try {
       final map = _box.get(int.parse(key));
       if (map == null) return null;
-      
-      final savedItinerary = SavedItinerary.fromMap(Map<String, dynamic>.from(map));
+
+      final savedItinerary = SavedItinerary.fromMap(
+        Map<String, dynamic>.from(map),
+      );
       return savedItinerary.toApiModel();
     } catch (e) {
       debugPrint('Error getting itinerary by key: $e');
@@ -81,7 +89,7 @@ class DatabaseService {
       debugPrint('Database not initialized');
       return false;
     }
-    
+
     try {
       await _box.delete(int.parse(key));
       return true;

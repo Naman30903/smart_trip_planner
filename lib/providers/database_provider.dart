@@ -16,7 +16,7 @@ final recentItinerariesProvider = FutureProvider<List<SavedItinerary>>((
   ref,
 ) async {
   final dbService = ref.watch(databaseServiceProvider);
-  // We need to await init in case it hasn't completed
+  await dbService.init();
   return dbService.getRecentItineraries(5); // Get last 5 saved itineraries
 });
 
@@ -54,5 +54,6 @@ final itineraryByKeyProvider = FutureProvider.family<TripItinerary?, String>((
   key,
 ) async {
   final dbService = ref.watch(databaseServiceProvider);
+  await dbService.init();
   return dbService.getItineraryByKey(key);
 });

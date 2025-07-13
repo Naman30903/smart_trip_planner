@@ -19,6 +19,13 @@ class SavedItinerary extends HiveObject {
   @HiveField(4)
   late String daysJson;
 
+  @HiveField(5)
+  late final int? key;
+
+  // set key(int? value) {
+  //   key = value;
+  // }
+
   SavedItinerary({
     required this.title,
     required this.startDate,

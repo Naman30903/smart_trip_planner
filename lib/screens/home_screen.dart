@@ -262,7 +262,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                // Show recent itineraries or loading state
                 recentItinerariesAsync.when(
                   data: (itineraries) {
                     if (itineraries.isEmpty) {
@@ -305,11 +304,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   onTap: () async {
                                     // Use Hive's key to retrieve the itinerary
                                     final key = itinerary.key.toString();
+                                    debugPrint(
+                                      'Retrieving itinerary with key: $key',
+                                    );
                                     final savedItinerary = await ref.read(
                                       itineraryByKeyProvider(key).future,
                                     );
 
                                     if (savedItinerary != null && mounted) {
+                                      debugPrint(
+                                        'Itinerary retrieved successfully: ${savedItinerary.title}',
+                                      );
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
@@ -317,6 +322,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                             itinerary: savedItinerary,
                                           ),
                                         ),
+                                      );
+                                    } else {
+                                      debugPrint(
+                                        'Failed to retrieve itinerary or screen not mounted.',
                                       );
                                     }
                                   },

@@ -3,7 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseAuth _auth;
+
+  AuthService({FirebaseAuth? firebaseAuth})
+    : _auth = firebaseAuth ?? FirebaseAuth.instance;
 
   // Auth state stream
   Stream<User?> get authStateChanges => _auth.authStateChanges();
