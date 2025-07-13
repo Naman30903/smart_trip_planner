@@ -4,7 +4,7 @@ A Flutter application that uses Google's Gemini AI to generate and refine person
 
 ## Demo
 
-[Watch Demo Video]((https://drive.google.com/file/d/1sRFlAVh2U5GTLUgDsz6BTBwCThzmNBz8/view?usp=sharing)) 
+[Watch Demo Video]-https://drive.google.com/file/d/1sRFlAVh2U5GTLUgDsz6BTBwCThzmNBz8/view?usp=sharing
 
  
 
