@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:smart_trip_planner/providers/database_provider.dart';
+import 'package:smart_trip_planner/screens/profile_screen.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/chat_provider.dart';
@@ -141,15 +142,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ],
                       ),
                     ),
-                    CircleAvatar(
-                      backgroundColor: const Color(0xFF00704A),
-                      radius: 24,
-                      child: const Text(
-                        "S",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 28,
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const ProfileScreen(),
+                          ),
+                        );
+                      },
+                      child: CircleAvatar(
+                        backgroundColor: const Color(0xFF00704A),
+                        radius: 24,
+                        child: const Text(
+                          "S",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 28,
+                          ),
                         ),
                       ),
                     ),

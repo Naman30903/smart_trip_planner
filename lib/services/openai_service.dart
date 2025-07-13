@@ -8,8 +8,21 @@ import '../models/message.dart';
 
 class GeminiService {
   late final Gemini _gemini;
-  // Store chat history
   final List<Content> _chatHistory = [];
+  int _requestTokens = 0;
+  int _responseTokens = 0;
+  final int _maxTokens = 1000;
+
+  int get requestTokens => _requestTokens;
+  int get responseTokens => _responseTokens;
+  int get maxTokens => _maxTokens;
+
+  double get totalCost {
+    // $0.00025 per 1K input tokens, $0.0005 per 1K output tokens (Gemini Pro)
+    double inputCost = (_requestTokens / 1000) * 0.00025;
+    double outputCost = (_responseTokens / 1000) * 0.0005;
+    return inputCost + outputCost;
+  }
 
   GeminiService() {
     final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
@@ -19,6 +32,17 @@ class GeminiService {
     // Initialize the Gemini instance
     Gemini.init(apiKey: apiKey);
     _gemini = Gemini.instance;
+  }
+
+  Future<int> _countTokens(String text) async {
+    try {
+      final tokenCount = await _gemini.countTokens(text);
+      return tokenCount ?? 0;
+    } catch (e) {
+      debugPrint('Error counting tokens: $e');
+      // Fallback to basic estimation if token counting fails
+      return (text.length / 4).ceil();
+    }
   }
 
   Future<TripItinerary> generateItinerary(String prompt) async {
@@ -48,6 +72,9 @@ class GeminiService {
       Make the itinerary realistic and detailed. 
       Do not include any text before or after the JSON. No markdown formatting.""";
 
+      final requestTokenCount = await _countTokens(fullPrompt);
+      _requestTokens += requestTokenCount;
+
       // Call the Gemini API
       final result = await _gemini.prompt(parts: [Part.text(fullPrompt)]);
       final output = result?.output;
@@ -55,6 +82,10 @@ class GeminiService {
       if (output == null || output.isEmpty) {
         throw Exception('Empty response from Gemini API');
       }
+
+      final responseTokenCount = await _countTokens(output);
+      _responseTokens += responseTokenCount;
+
       String jsonStr = output
           .replaceAll('```json', '')
           .replaceAll('```', '')
@@ -116,11 +147,13 @@ class GeminiService {
       
       Please update the itinerary to incorporate this request. Return the complete, revised itinerary as valid JSON following the same schema, with all the original details plus the requested changes. Make sure the response is a valid JSON that I can parse.""";
 
+      final requestTokenCount = await _countTokens(prompt);
+      _requestTokens += requestTokenCount;
+
       // Initialize chat if it's empty
       if (_chatHistory.isEmpty) {
         _chatHistory.add(Content(role: 'user', parts: [Part.text(prompt)]));
       } else {
-        // Add the new message to chat history
         _chatHistory.add(
           Content(role: 'user', parts: [Part.text(followUpQuestion)]),
         );
@@ -133,14 +166,16 @@ class GeminiService {
 
       debugPrint('Gemini chat response: $response');
 
-      // if (response == null || response.isEmpty) {
-      //   throw Exception('Empty response from Gemini API');
-      // }
+      if (response != null && response.isNotEmpty) {
+        // Update response tokens
+        final responseTokenCount = await _countTokens(response);
+        _responseTokens += responseTokenCount;
 
-      // Add the AI response to chat history
-      _chatHistory.add(Content(role: 'model', parts: [Part.text(response!)]));
+        // Add the AI response to chat history
+        _chatHistory.add(Content(role: 'model', parts: [Part.text(response)]));
+      }
 
-      return response;
+      return response ?? '';
     } catch (e) {
       debugPrint('Error refining itinerary: $e');
       throw Exception('Error refining itinerary: $e');
